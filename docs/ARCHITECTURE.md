@@ -430,7 +430,7 @@ Le JSON Schema est généré depuis ces structs (`schemars`) et versionné dans 
 
 ### Distribution des templates
 
-Les templates ne sont ni dans le dépôt ni dans les binaires : l'app démarre avec une bibliothèque vide et les charge depuis son dossier de données. Ils s'y importent en lot (plusieurs `.toml`, un dossier, une archive `.zip`) ; chaque template est validé et ses tests embarqués sont lancés avant d'être enregistré, et un lot peut contenir un template et ses parents dans n'importe quel ordre.
+L'app n'embarque qu'un socle générique (`base/common`, `base/elixir`, `base/haproxy`, `base/riak-console`, dans `crates/core/templates/base/`) : détecteurs et clés courantes, sans rien de propre à une équipe. Il prend tout fichier qui n'a pas d'autre template, pour qu'une app vierge sache anonymiser ce qui se reconnaît à sa forme et profiler des logs ; à précision de motif égale, il passe après tous les autres. Les templates d'équipe ne sont ni dans le dépôt ni dans les binaires : l'app les charge depuis son dossier de données. Ils s'y importent en lot (plusieurs `.toml`, un dossier, une archive `.zip`) ; chaque template est validé et ses tests embarqués sont lancés avant d'être enregistré, et un lot peut contenir un template et ses parents dans n'importe quel ordre.
 
 Organisation conseillée d'un lot :
 

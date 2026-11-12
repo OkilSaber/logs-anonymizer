@@ -1,0 +1,67 @@
+# Socle générique embarqué : console.log (logs lager de Riak).
+
+[template]
+id = "base/riak-console"
+name = "Socle générique — Riak console (console.log)"
+version = "1.0.0"
+schema_version = 1
+author = "Logs Anonymizer"
+description = 'Logs lager de Riak : clés <<"bucket">>/<<"clé">>, où la clé peut être un email.'
+log_kind = "console"
+format = "lager_syslog"
+extends = ["base/common@^1"]
+suggested_apps = ["*"]
+
+[format.options]
+strip_ansi = true
+max_entry_lines = 500
+max_entry_bytes = "256KiB"
+reorder_window = 4096
+
+[extractors]
+enabled = ["riak_key", "elixir_term"]
+
+# ---------------------------------------------------------------------------
+# Filtres de bruit (désactivés par défaut : utiles quand on débogue Riak lui-même)
+# ---------------------------------------------------------------------------
+
+[[filters]]
+id = "bitcask-merge"
+description = "Merged {[…bitcask.data],[]} in 0.11353 seconds."
+enabled = false
+action = "drop_entry"
+header = '\] <[0-9.]+>(@\S+)? Merged \{'
+
+[[filters]]
+id = "dedup"
+enabled = false
+action = "dedup"
+ignore = ["timestamp", "pid"]
+
+# ---------------------------------------------------------------------------
+# Règles
+# ---------------------------------------------------------------------------
+
+# Une clé Riak qui est un email est déjà prise par base/common:emails.
+# Les autres clés (numéros de commande…) sont gardées par défaut.
+[[rules]]
+id = "riak-keys"
+description = "Pseudonymise toutes les clés Riak. Désactivé par défaut : à activer pour un bucket dont les clés identifient des personnes."
+enabled = false
+keys = ["riak.key"]
+extractors = ["riak_key"]
+strategy = "pseudonymize"
+token = "RIAKKEY"
+
+# ---------------------------------------------------------------------------
+# Tests
+# ---------------------------------------------------------------------------
+
+[[tests]]
+name = "clé Riak qui est un email ; le bucket et les autres clés sont gardés"
+input = '''
+riak01.example.net  2026-11-09 14:25:54.020 [warning] <0.1166.0>@riak_kv_vnode:do_get_object:1837 Read large object <<"demo_orders">>/<<"900424011">> (5652713 bytes)
+riak01.example.net  2026-11-09 14:25:55.020 [warning] <0.1166.0>@riak_kv_vnode:do_get_object:1837 Read large object <<"demo_users">>/<<"jean.dupont@example.com">> (5652713 bytes)
+'''
+expect_contains = ["<<\"demo_orders\">>/<<\"900424011\">>", "<<\"demo_users\">>/<<\"EMAIL_"]
+expect_not_contains = ["jean.dupont@example.com"]

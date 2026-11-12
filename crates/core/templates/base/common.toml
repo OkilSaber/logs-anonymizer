@@ -1,0 +1,296 @@
+# Socle générique embarqué dans l'app, commun à tous les formats.
+# Abstrait : pas de format, non assignable à une app. Il sert de base aux socles de format
+# base/elixir, base/haproxy et base/riak-console, qui prennent tout fichier sans autre template.
+
+[template]
+id = "base/common"
+name = "Socle générique — commun"
+version = "1.0.0"
+schema_version = 1
+author = "Logs Anonymizer"
+description = "Détecteurs, identifiants, jetons de session et PII génériques, quel que soit le format de log."
+abstract = true
+
+# ---------------------------------------------------------------------------
+# Ce qui n'est pas sensible : les adresses locales et privées. L'infra propre à une équipe
+# (domaines, plages IPv6) se déclare dans ses templates.
+# `domains` ne vaut que pour les noms d'hôtes, jamais pour les emails.
+# ---------------------------------------------------------------------------
+
+[allowlist]
+domains = ["localhost"]
+cidrs = [
+  "127.0.0.0/8",
+  "10.0.0.0/8",
+  "172.16.0.0/12",
+  "192.168.0.0/16",
+  "::1/128",
+  "fe80::/10",
+]
+emails = []
+values = []
+
+# ---------------------------------------------------------------------------
+# Identifiants et jetons
+# ---------------------------------------------------------------------------
+
+[[rules]]
+id = "auth-headers"
+description = "En-tête Authorization, en métadonnée Plug, en terme Elixir ou en JSON. Garde le schéma : Basic [CREDENTIALS]."
+keys = ["authorization", "proxy-authorization"]
+strategy = "redact"
+label = "CREDENTIALS"
+preserve = "scheme"
+priority = 300
+
+[[rules]]
+id = "basic-auth"
+description = "Basic <base64> dans du texte libre. Le base64 est décodé pour vérifier qu'il contient login:mot_de_passe."
+detector = "basic_auth"
+strategy = "redact"
+label = "CREDENTIALS"
+priority = 290
+
+[[rules]]
+id = "bearer-token"
+detector = "bearer_token"
+strategy = "redact"
+label = "CREDENTIALS"
+priority = 290
+
+[[rules]]
+id = "url-credentials"
+description = "https://login:mot_de_passe@host"
+detector = "url_userinfo"
+strategy = "redact"
+label = "CREDENTIALS"
+priority = 290
+
+[[rules]]
+id = "credential-assignments"
+description = "Valeur affectée à une clé d'identifiant dans du texte libre : password: 'x', token=x, \"secret\" => \"x\". Indépendant de la forme du dump."
+detector = "credential_assignment"
+strategy = "redact"
+label = "CREDENTIALS"
+priority = 290
+
+[[rules]]
+id = "jwt"
+description = "JWT en clair ou URL-encodé (client_assertion=eyJ…%3D)."
+detector = "jwt"
+strategy = "redact"
+label = "JWT"
+priority = 280
+
+[[rules]]
+id = "credential-keys"
+description = "Clés dont la valeur est un secret, dans tous les extracteurs (JSON, termes, query string, métadonnées)."
+keys = [
+  "password", "passwd", "pwd", "pass", "*password*", "*passwd*",
+  "secret", "*_secret", "client_secret",
+  "api_key", "apikey", "api-key", "x-api-key",
+  "token", "*_token", "access_token", "refresh_token", "id_token",
+  "client_assertion", "assertion",
+  "samlrequest", "samlresponse",
+  "signature", "hmac", "private_key",
+  "session", "session_id", "sessionid", "sid",
+]
+strategy = "redact"
+label = "CREDENTIALS"
+priority = 250
+
+[[rules]]
+id = "cookies"
+description = "Valeur de chaque cookie. Un email contenu dans la valeur reste corrélable : demo-auth=EMAIL_xxxxxxxx[SESSION]."
+keys = ["cookie.*", "set-cookie.*", "cookies.*", "req_cookies.*", "resp_cookies.*"]
+strategy = "redact"
+label = "SESSION"
+keep_inner = ["emails"]
+priority = 240
+
+[[rules]]
+id = "cookies-raw"
+description = "En-tête cookie que l'extracteur n'a pas su découper (tronqué, mal formé)."
+keys = ["cookie", "set-cookie"]
+strategy = "redact"
+label = "SESSION"
+priority = 150
+
+[[rules]]
+id = "secrets-high-entropy"
+description = "Chaînes base64 ou hex longues à forte entropie. Les suites de chiffres seuls sont ignorées."
+detector = "high_entropy"
+strategy = "redact"
+label = "SECRET"
+priority = 50
+
+# ---------------------------------------------------------------------------
+# Personnes
+# ---------------------------------------------------------------------------
+
+[[rules]]
+id = "emails"
+description = "Tout email, où qu'il soit : cookie, chemin d'URL, message, liste de destinataires, JSON, clé Riak."
+detector = "email"
+strategy = "pseudonymize"
+token = "EMAIL"
+normalize = "email"
+
+[[rules]]
+id = "email-keys"
+description = "Clés d'email, y compris si la valeur n'a pas la forme attendue par le détecteur."
+keys = ["*email", "email*", "e-mail", "mail", "*_mail"]
+strategy = "pseudonymize"
+token = "EMAIL"
+normalize = "email"
+
+[[rules]]
+id = "login-keys"
+description = "Identifiants de connexion et d'utilisateur, y compris le « sub » d'un jeton décodé. Le jeton garde la corrélation entre les lignes."
+keys = ["username", "*username", "user_name", "user", "login", "userlogin", "user_id", "userid", "user_ids", "sub"]
+strategy = "pseudonymize"
+token = "USER"
+normalize = "lower"
+
+[[rules]]
+id = "person-names"
+keys = [
+  "firstname*", "lastname*", "first_name*", "last_name*", "fullname*", "full_name*",
+  "*firstname*", "*lastname*", "*first_name*", "*last_name*", "customer*name",
+  "surname*", "*_surname", "given_name*", "family_name*", "prenom*",
+]
+strategy = "pseudonymize"
+token = "NAME"
+normalize = "casefold"
+
+[[rules]]
+id = "civility"
+keys = ["civility", "*civility"]
+strategy = "redact"
+label = "CIVILITY"
+
+[[rules]]
+id = "customer-ids"
+description = "Identifiants de personne chez des tiers (dwcustomerid, epiphanycustomerid…)."
+keys = ["*customerid*", "*customer_id*", "idcustomer*", "id_customer*"]
+strategy = "pseudonymize"
+token = "CUSTOMERID"
+
+[[rules]]
+id = "payment-references"
+keys = ["pspreference", "psp_reference"]
+strategy = "pseudonymize"
+token = "PSP"
+
+[[rules]]
+id = "phone-keys"
+keys = ["*phone*", "mobile", "msisdn"]
+strategy = "pseudonymize"
+token = "PHONE"
+normalize = "digits"
+
+[[rules]]
+id = "phones"
+description = "Numéros au format international (+33…) ou national français, dans du texte libre."
+detector = "phone"
+strategy = "pseudonymize"
+token = "PHONE"
+normalize = "digits"
+priority = 60
+
+# ---------------------------------------------------------------------------
+# Adresses postales
+# ---------------------------------------------------------------------------
+
+[[rules]]
+id = "address-lines"
+keys = ["addressline*", "address?", "address?_*", "address_line*", "street", "street?", "street_*"]
+strategy = "redact"
+label = "ADDRESS"
+
+[[rules]]
+id = "postal-codes"
+keys = ["zipcode*", "zip_code*", "zip", "postcode*", "post_code*", "postalcode*", "postal_code*"]
+strategy = "pseudonymize"
+token = "ZIP"
+
+[[rules]]
+id = "cities"
+keys = ["city", "city_*", "town"]
+strategy = "pseudonymize"
+token = "CITY"
+normalize = "casefold"
+
+[[rules]]
+id = "address-blocks"
+description = "Filet sur les blocs d'adresse : tout champ non couvert par une règle plus précise est masqué."
+keys = ["*address", "*_address"]
+strategy = "redact"
+label = "ADDRESS"
+priority = 150
+
+[[rules]]
+id = "address-country"
+description = "Le pays n'identifie personne : on le garde, y compris dans un bloc d'adresse."
+keys = ["country", "country_code", "countrycode"]
+strategy = "keep"
+priority = 210
+
+# ---------------------------------------------------------------------------
+# Réseau
+# ---------------------------------------------------------------------------
+
+[[rules]]
+id = "public-ipv4"
+description = "IPv4 publiques. Les plages de l'allowlist (infra, privées) ne sont pas touchées."
+detector = "ipv4_public"
+strategy = "pseudonymize"
+token = "IP"
+normalize = "ip"
+
+[[rules]]
+id = "public-ipv6"
+description = "IPv6 hors des plages de l'allowlist."
+detector = "ipv6_public"
+strategy = "pseudonymize"
+token = "IP"
+normalize = "ip"
+
+# ---------------------------------------------------------------------------
+# Banque
+# ---------------------------------------------------------------------------
+
+[[rules]]
+id = "iban"
+detector = "iban"
+strategy = "redact"
+label = "IBAN"
+priority = 280
+
+[[rules]]
+id = "payment-cards"
+description = "Suites de 13 à 19 chiffres qui passent le contrôle de Luhn."
+detector = "card_luhn"
+strategy = "redact"
+label = "CARD"
+priority = 60
+
+# ---------------------------------------------------------------------------
+# Tests. Un template abstrait est testé avec le format « plain » :
+# une ligne = une entrée, sans préfixe host.
+# ---------------------------------------------------------------------------
+
+[[tests]]
+name = "email, jeton et IP publique dans du texte libre"
+input = '''
+owner jean.dupont@example.com not found from 203.0.113.10, password: 'Xy*=7&gZtjHk?R'
+'''
+expect_contains = ["owner EMAIL_", "from IP_", "password: '[CREDENTIALS]'"]
+expect_not_contains = ["jean.dupont@example.com", "203.0.113.10", "Xy*=7&gZtjHk?R"]
+
+[[tests]]
+name = "adresse privée et hôte local : gardés"
+input = '''
+connect to 10.0.3.12:8080 via localhost failed
+'''
+expect_contains = ["connect to 10.0.3.12:8080 via localhost failed"]

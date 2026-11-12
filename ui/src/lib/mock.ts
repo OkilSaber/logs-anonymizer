@@ -23,7 +23,7 @@ let config: Config = {
   mapping_table: true,
   safety_action: "replace",
   check_updates: true,
-  app_version: "0.1.1",
+  app_version: "0.1.2",
 };
 
 let added = 0;
@@ -362,7 +362,7 @@ export const mockApi: Api = {
   cachePurge: async () => ({ path: "~/Library/Caches/fr.kbrw.logs-anonymizer/raw", bytes: 0 }),
   copyProfile: async (text) => text.length,
   // Aperçu : une version plus récente existe toujours, et son installation ne fait qu'avancer une barre.
-  updateCheck: async () => ({ version: "0.2.0", current: "0.1.1", notes: "Bouton « Copier pour une IA » dans le profil.\nMises à jour depuis l'app.", date: "2026-11-20" }),
+  updateCheck: async () => ({ version: "0.2.0", current: "0.1.2", notes: "Bouton « Copier pour une IA » dans le profil.\nMises à jour depuis l'app.", date: "2026-11-20" }),
   updateInstall: async () => {
     for (let i = 1; i <= 20; i++) {
       await new Promise((r) => setTimeout(r, 120));

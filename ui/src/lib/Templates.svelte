@@ -166,6 +166,7 @@ suggested_apps = ["mon_app"]
             <span class="flex-1"></span>
             {#if !t.available}<span class="rounded bg-warn-soft px-1.5 py-0.5 text-[10.5px] text-warn">à venir</span>
             {:else if t.is_abstract}<span class="rounded bg-raised px-1.5 py-0.5 text-[10.5px] text-muted">socle</span>
+            {:else if t.id.startsWith("base/")}<span class="rounded bg-raised px-1.5 py-0.5 text-[10.5px] text-muted">générique</span>
             {:else if t.id.startsWith("local/")}<span class="rounded bg-accent-soft px-1.5 py-0.5 text-[10.5px] text-fg">local</span>{/if}
           </div>
           <div class="mt-0.5 truncate text-[12px] text-muted">{t.name}</div>
@@ -215,10 +216,10 @@ suggested_apps = ["mon_app"]
             </div>
           {/if}
         </div>
-      {:else if !templates.length}
+      {:else if templates.every((t) => t.id.startsWith("base/"))}
         <div class="max-w-md text-center">
-          <div class="text-[15px] font-semibold">Aucun template</div>
-          <p class="mt-2 text-[12.5px] leading-relaxed text-muted">L'app est livrée sans template : sans eux, aucun fichier ne peut être anonymisé. Importe l'archive .zip de ton équipe, un dossier, ou des fichiers .toml. Chaque template est validé et ses tests sont lancés avant d'être enregistré.</p>
+          <div class="text-[15px] font-semibold">Seulement le socle générique</div>
+          <p class="mt-2 text-[12.5px] leading-relaxed text-muted">L'app n'embarque qu'un socle générique : il masque ce qui se reconnaît à sa forme (emails, IP, jetons, téléphones) et les clés courantes, pas les clés propres à un projet. Importe l'archive .zip de ton équipe, un dossier, ou des fichiers .toml. Chaque template est validé et ses tests sont lancés avant d'être enregistré.</p>
           <div class="mt-4 flex justify-center gap-2">
             <button class="btn btn-primary" disabled={importing} onclick={() => importMany(false)}>Importer un .zip ou des .toml…</button>
             <button class="btn" disabled={importing} onclick={() => importMany(true)}>Importer un dossier…</button>

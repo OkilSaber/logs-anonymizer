@@ -2,6 +2,7 @@
 
 use crate::config::{AppConfig, Dirs};
 use crate::error::{AppError, AppResult};
+use logano_core::template::library::BASE_NAMESPACE;
 use logano_core::glob::glob_match_ci;
 use logano_core::Library;
 use logano_remote::{BastionConfig, CancellationToken, ConnectOptions, RemoteSession, SecretString, ServerConfig, SessionPool};
@@ -133,6 +134,7 @@ impl AppState {
 
 /// Template d'un fichier : celui imposé, sinon une association de la config, sinon le
 /// template dont `suggested_apps` désigne l'app le plus précisément, sinon le socle du type.
+/// Le socle générique embarqué (`base/…`) ne sert que s'il n'y a rien d'autre.
 pub fn pick_template(lib: &Library, cfg: &AppConfig, app: &str, kind: &str, forced: Option<&str>) -> Option<String> {
     if let Some(f) = forced.filter(|f| !f.is_empty()) {
         return Some(f.to_string());
@@ -140,7 +142,9 @@ pub fn pick_template(lib: &Library, cfg: &AppConfig, app: &str, kind: &str, forc
     if let Some(a) = cfg.associations.iter().find(|a| a.log_kind == kind && glob_match_ci(&a.app, app)) {
         return Some(a.template.clone());
     }
-    let mut best: Option<(usize, &str)> = None;
+    // (précision du motif, hors socle générique) : le socle générique `base/…` ne passe que
+    // si rien d'autre ne convient, même à précision égale.
+    let mut best: Option<((usize, bool), &str)> = None;
     for id in lib.ids() {
         let Some(file) = lib.get(id) else { continue };
         let meta = &file.template;
@@ -152,8 +156,9 @@ pub fn pick_template(lib: &Library, cfg: &AppConfig, app: &str, kind: &str, forc
                 // Le motif le plus précis est celui qui a le plus de caractères littéraux ;
                 // à égalité, le template local de l'app passe devant.
                 let score = pattern.chars().filter(|c| *c != '*' && *c != '?').count() * 2 + usize::from(id.starts_with("local/"));
-                if best.is_none_or(|(s, _)| score > s) {
-                    best = Some((score, id));
+                let rank = (score, !id.starts_with(BASE_NAMESPACE));
+                if best.is_none_or(|(r, _)| rank > r) {
+                    best = Some((rank, id));
                 }
             }
         }
@@ -166,6 +171,25 @@ mod tests {
     #![cfg_attr(not(logano_templates), allow(unused_imports, dead_code))]
     use super::*;
     use crate::config::Association;
+
+    #[test]
+    fn without_any_imported_template_the_generic_base_takes_every_file() {
+        // Seulement le socle embarqué, comme dans l'app distribuée avant tout import.
+        let mut lib = Library::default();
+        for id in ["base/common", "base/elixir", "base/haproxy", "base/riak-console"] {
+            lib.add_str(Library::builtin().source(id).expect(id)).unwrap();
+        }
+        let cfg = AppConfig::default();
+        assert_eq!(pick_template(&lib, &cfg, "demo_services", "erlang", None).as_deref(), Some("base/elixir"));
+        assert_eq!(pick_template(&lib, &cfg, "demo_services", "haproxy", None).as_deref(), Some("base/haproxy"));
+        assert_eq!(pick_template(&lib, &cfg, "riakn", "console", None).as_deref(), Some("base/riak-console"));
+        assert!(lib.compile("base/elixir").is_ok());
+
+        // Un template importé de même précision (« * ») passe devant le socle générique.
+        let mine = lib.source("base/elixir").unwrap().replace("id = \"base/elixir\"", "id = \"equipe/elixir\"");
+        lib.add_str(&mine).unwrap();
+        assert_eq!(pick_template(&lib, &cfg, "demo_services", "erlang", None).as_deref(), Some("equipe/elixir"));
+    }
 
     #[cfg(logano_templates)]
     #[test]

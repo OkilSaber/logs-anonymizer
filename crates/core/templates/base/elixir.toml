@@ -1,0 +1,127 @@
+# Socle générique embarqué : erlang.log (Elixir Logger via syslog).
+# Il s'applique à toute application qui n'a pas de template plus précis : assez pour
+# anonymiser ce qui se reconnaît à sa forme et pour profiler les logs, pas pour connaître
+# les clés propres à un projet.
+
+[template]
+id = "base/elixir"
+name = "Socle générique — Elixir (erlang.log)"
+version = "1.0.0"
+schema_version = 1
+author = "Logs Anonymizer"
+description = "Logs applicatifs Elixir/Erlang : métadonnées Plug, termes Elixir, payloads JSON, crash reports."
+log_kind = "erlang"
+format = "elixir_syslog"
+extends = ["base/common@^1"]
+suggested_apps = ["*"]
+
+[format.options]
+strip_ansi = true
+max_entry_lines = 2000
+max_entry_bytes = "1MiB"
+reorder_window = 4096
+metadata_prefix = true        # [services@2001:…:1][Elixir.Riak][#PID<0.907.26>]
+
+[extractors]
+enabled = ["plug_metadata", "http_request", "cookie", "json", "elixir_term"]
+
+[extractors.options.elixir_term]
+max_depth = 64
+
+[extractors.options.json]
+max_depth = 64
+
+# ---------------------------------------------------------------------------
+# Filtres de bruit
+# ---------------------------------------------------------------------------
+
+[[filters]]
+id = "ping"
+description = "Sondes de vie : la requête (in GET /api/ping) et sa réponse (Sent 200 in 1ms GET /api/ping)."
+action = "drop_entry"
+routes = ["/api/ping", "/ping"]
+
+[[filters]]
+id = "alive"
+description = "===== ALIVE … et ===== seul. « LOGGING STARTED » est gardé : il marque un redémarrage."
+action = "drop_entry"
+kinds = ["alive"]
+
+[[filters]]
+id = "statsd"
+description = "Métriques statsd : compteur.nom.hourly:1|c"
+action = "drop_entry"
+kinds = ["statsd"]
+
+[[filters]]
+id = "root-probe"
+description = "Requêtes sur « / » et leurs réponses 2xx ou 3xx : sonde du répartiteur de charge sur les gateways, chargement de la page sur les interfaces. Une réponse en erreur est gardée. Désactivé par défaut ; les templates des projets où c'est une sonde l'activent."
+enabled = false
+action = "drop_entry"
+header = '\] +((in )?GET /|Sent [23]\d\d in \S+\s+GET /)\s*$'
+
+[[filters]]
+id = "sent-without-route"
+description = "Ancien format de réponse, sans route (« Sent 200 in 12µs ») : seules les réponses 2xx et 3xx de moins d'une seconde sont retirées. Désactivé par défaut."
+enabled = false
+action = "drop_entry"
+header = '\] +Sent [23]\d\d in (\d+µs|\d{1,3}ms)\s*$'
+
+[[filters]]
+id = "dedup"
+description = "Fusionne les entrées identiques consécutives d'une même source (×42). Désactivé par défaut."
+enabled = false
+action = "dedup"
+ignore = ["timestamp", "pid", "reference"]
+
+# ---------------------------------------------------------------------------
+# Règles propres aux logs Elixir (le reste vient de base/common)
+# ---------------------------------------------------------------------------
+
+[[rules]]
+id = "plug-conn-peer"
+description = "remote_ip: {203, 0, 113, 10} et peer: {{203, 0, 113, 10}, 51234} dans un %Plug.Conn{}. Même jeton que l'IP écrite 203.0.113.10."
+keys = ["remote_ip", "peer", "x-forwarded-for", "x-real-ip", "forwarded"]
+strategy = "pseudonymize"
+token = "IP"
+normalize = "ip"
+
+[[rules]]
+id = "plug-conn-secrets"
+description = "Secrets d'un %Plug.Conn{} complet."
+keys = ["secret_key_base", "private.plug_session", "private.plug_session_info"]
+strategy = "redact"
+label = "CREDENTIALS"
+priority = 250
+
+# ---------------------------------------------------------------------------
+# Tests
+# ---------------------------------------------------------------------------
+
+[[tests]]
+name = "requête avec cookie de session et email"
+input = """
+app01.example.net  09:39:05.203 [info]  in GET /api/orders
+app01.example.net  \tcookie : demo-auth=jean.dupont@example.com%7C1794217138%7CAbCdEfGhIjKlMnOpQrStUvWxYz0=
+app01.example.net  \t#Reference<0.1590975473.2172125185.81270>
+"""
+expect_contains = ["in GET /api/orders", "demo-auth=EMAIL_", "[SESSION]"]
+expect_not_contains = ["jean.dupont@example.com", "AbCdEfGhIjKlMnOpQrStUvWxYz0"]
+
+[[tests]]
+name = "terme Elixir : noms, téléphone et mot de passe ; l'identifiant de commande est gardé"
+input = """
+app01.example.net  10:00:02.000 [info]  params: %{order_id: "900000001", first_name: "Jean", last_name: "DUPONT", mobilephone: "0600000000", password: "hunter2", user_id: "U123456"}
+"""
+expect_contains = ["order_id: \"900000001\"", "first_name: \"NAME_", "last_name: \"NAME_", "mobilephone: \"PHONE_", "password: \"[CREDENTIALS]\"", "user_id: \"USER_"]
+expect_not_contains = ["Jean", "DUPONT", "0600000000", "hunter2", "U123456"]
+
+[[tests]]
+name = "bruit filtré : ping et ALIVE ; le reste est gardé"
+input = """
+app01.example.net  10:00:03.000 [info]  in GET /api/ping
+app01.example.net  10:00:03.001 [info]  Sent 200 in 1ms GET /api/ping
+app01.example.net  10:00:04.000 [info]  in GET /
+"""
+expect_contains = ["in GET /"]
+expect_not_contains = ["/api/ping"]

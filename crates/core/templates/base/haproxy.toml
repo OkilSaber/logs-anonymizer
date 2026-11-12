@@ -1,0 +1,105 @@
+# Socle générique embarqué : haproxy.log (format HTTP personnalisé, TCP et erreurs TLS).
+
+[template]
+id = "base/haproxy"
+name = "Socle générique — HAProxy (haproxy.log)"
+version = "1.0.0"
+schema_version = 1
+author = "Logs Anonymizer"
+description = "Logs HAProxy du frontal : IP client, en-têtes capturés, URL de requête."
+log_kind = "haproxy"
+format = "haproxy_syslog"
+extends = ["base/common@^1"]
+suggested_apps = ["*"]
+
+[format.options]
+strip_ansi = true
+# L'en-tête syslog répète le host, et sa date ISO double celle du payload.
+# compact_header = true ne garde que : <host>  <payload>
+compact_header = true
+
+[extractors]
+enabled = ["haproxy", "http_request"]
+
+# ---------------------------------------------------------------------------
+# Filtres de bruit
+# ---------------------------------------------------------------------------
+
+[[filters]]
+id = "ping"
+action = "drop_entry"
+routes = ["/api/ping", "/ping"]
+
+[[filters]]
+id = "scanner-noise"
+description = "Scans automatiques refusés : chemins connus de scanners, uniquement quand la réponse est un refus."
+action = "drop_entry"
+where = { status = [400, 401, 403, 404, 405] }
+routes = [
+  "/.env", "/.env.*", "/**/.env",
+  "/.git/**", "/.aws/**", "/.ssh/**", "/.vscode/**",
+  "/wp-login.php", "/wp-admin/**", "/wp-content/**", "/wp-includes/**", "/xmlrpc.php",
+  "/**/*.php",
+  "/cgi-bin/**", "/setup.cgi",
+  "/actuator/**", "/vendor/**", "/phpmyadmin/**", "/pma/**",
+  "/boaform/**", "/HNAP1/**", "/owa/**", "/solr/**", "/manager/html",
+]
+
+[[filters]]
+id = "tls-handshake-errors"
+description = "SSL handshake failure, Timeout during SSL handshake, Connection closed during SSL handshake. Désactivé par défaut."
+enabled = false
+action = "drop_entry"
+kinds = ["tls_error"]
+
+[[filters]]
+id = "bad-requests"
+description = "req[\"<BADREQ>\"] sans serveur. Désactivé par défaut."
+enabled = false
+action = "drop_entry"
+where = { request = ["<BADREQ>"], server = ["<NOSRV>"] }
+
+# ---------------------------------------------------------------------------
+# Règles propres à HAProxy (emails, identifiants et jetons viennent de base/common)
+# ---------------------------------------------------------------------------
+
+[[rules]]
+id = "client-ip"
+description = "IP du client. Une IPv6 interne (allowlist) est gardée ; le port suit le dernier « : »."
+keys = ["haproxy.client_ip"]
+extractors = ["haproxy"]
+strategy = "pseudonymize"
+token = "IP"
+normalize = "ip"
+
+[[rules]]
+id = "frontend-public-ip"
+description = "IP publique inscrite dans le nom du frontend ou du backend : node-public_ipv4-51_75_10_28-443~ → node-public_ipv4-IP_xxxxxxxx-443~."
+keys = ["haproxy.frontend.ip", "haproxy.backend.ip"]
+extractors = ["haproxy"]
+strategy = "pseudonymize"
+token = "IP"
+normalize = "ip"
+
+[[rules]]
+id = "captured-cookies"
+description = "Cookies capturés par HAProxy (champs req_cookie et resp_cookie, « - » quand il n'y en a pas)."
+keys = ["haproxy.req_cookie", "haproxy.resp_cookie"]
+extractors = ["haproxy"]
+strategy = "redact"
+label = "SESSION"
+
+# Les IP publiques des en-têtes capturés (hds[{51.75.11.123:80|}]) sont prises
+# par base/common:public-ipv4.
+
+# ---------------------------------------------------------------------------
+# Tests
+# ---------------------------------------------------------------------------
+
+[[tests]]
+name = "IP du client et email dans l'URL"
+input = '''
+front01.example.net  2026-11-09T00:10:06+00:00 front01.example.net haproxy[227]: 198.51.100.65:40461 [09/Nov/2026:00:10:06.788] node-public_ipv4-203_0_113_28-443~ demo_admin-local_ipv6-8080/demo-admin01 tls[TLSv1.3/TLS_AES_256_GCM_SHA384/28] t[0/0/0/1/1] c[200] sz[174] - - ---- 1/1/0/0/0 0/0 hds[{demo.example.net|}] req["GET /api/users/jean.dupont@example.com HTTP/1.1"]
+'''
+expect_contains = ["IP_", "c[200] sz[174]", "req[\"GET /api/users/EMAIL_"]
+expect_not_contains = ["198.51.100.65", "203_0_113_28", "jean.dupont@example.com"]

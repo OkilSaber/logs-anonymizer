@@ -514,6 +514,9 @@
                 <div class="min-w-0 flex-1">
                   <div class="truncate font-mono text-[13px]">{f.app}<span class="text-faint">/</span>{f.cluster}<span class="text-faint">/</span>{f.kind}</div>
                   <div class="mt-0.5 text-[12px] text-muted">{f.template}@{f.template_version} · {daysLabel(f.days)}</div>
+                  {#if f.template.startsWith("base/")}
+                    <div class="mt-1 text-[12px] leading-snug text-warn">Socle générique : seuls les emails, IP, jetons et clés courantes sont masqués. Ouvre Profil pour voir ce qui reste en clair avant de donner cette sortie à une IA.</div>
+                  {/if}
                 </div>
                 <button class="btn" disabled={!!profiling} onclick={() => openProfile(f)} title="Formes d'entrées par poids et inventaire des clés, sur ce jour">
                   {profiling === f.output_id ? "Profilage…" : "Profil"}
@@ -629,7 +632,7 @@
                   <tr class="border-b border-line last:border-0 {f.problem ? 'text-faint' : ''}">
                     <td class="px-3 py-2 tabular-nums text-muted">{frDay(f.day)}</td>
                     <td class="px-3 py-2 font-mono">{f.app}/{f.cluster}/{f.kind}{f.compressed ? ".log.gz" : ".log"}</td>
-                    <td class="px-3 py-2 font-mono text-muted">{f.template ?? "—"}</td>
+                    <td class="px-3 py-2 font-mono text-muted">{f.template ?? "—"}{#if f.template?.startsWith("base/")}<span class="ml-1.5 rounded bg-warn-soft px-1.5 py-0.5 font-sans text-[10.5px] text-warn" title="Aucun template de projet pour cette application : seul le socle générique s'applique">générique</span>{/if}</td>
                     <td class="px-3 py-2 text-right tabular-nums">{bytes(f.size)}</td>
                     <td class="px-3 py-2">
                       {#if f.problem}<span title={f.problem}>Ignoré · {f.problem}</span>

@@ -17,7 +17,9 @@ Les binaires sont dans les [releases](../../releases).
 
 ## Premier lancement : importer les templates
 
-L'app est livrée **sans aucun template**, et sans eux aucun fichier ne peut être anonymisé. Les templates décrivent les logs d'une application (bruit à retirer, clés à masquer) : ils se partagent à part, en général dans une archive `.zip`.
+L'app n'embarque qu'un **socle générique** (`base/…`) : il masque ce qui se reconnaît à sa forme (emails, IP, jetons, mots de passe, téléphones, IBAN, cartes) et les clés courantes (noms, adresses, identifiants d'utilisateur). Tout fichier est donc traité et profilable dès l'installation, mais les clés propres à un projet restent en clair et aucun bruit n'est retiré : une sortie faite avec le socle seul est signalée comme telle, et se relit dans **Profil** avant d'être donnée à une IA.
+
+Les templates d'une équipe décrivent les logs de ses applications (bruit à retirer, clés à masquer). Ils se partagent à part, en général dans une archive `.zip`, et passent toujours devant le socle générique.
 
 Dans l'écran **Templates** :
 
@@ -27,6 +29,14 @@ Dans l'écran **Templates** :
 Un lot peut contenir un template et ses parents, dans n'importe quel ordre, et l'arborescence de l'archive n'a pas d'importance : chaque template est rangé sous son identifiant. Avant d'être enregistré, chaque template est validé (schéma, héritage, compilation) et ses tests embarqués sont lancés. Le rapport d'import liste ce qui est entré, remplacé ou refusé, et signale les templates qui gardent des valeurs en clair ou désactivent une protection héritée : ceux-là sont à relire avant usage.
 
 Les templates importés vont dans le dossier de données de l'app (`~/Library/Application Support/fr.kbrw.logs-anonymizer/templates` sous macOS, `~/.local/share/fr.kbrw.logs-anonymizer/templates` sous Linux). Ils se modifient, s'exportent et se suppriment depuis le même écran.
+
+### Faire écrire un template par une IA
+
+Sans jamais lui donner de logs bruts :
+
+1. Lancer une extraction sur un jour de l'application (le socle générique suffit), ouvrir **Profil** sur le résultat, puis **Copier pour une IA** : formes de lignes les plus lourdes et clés qui gardent des valeurs en clair, sans aucune valeur.
+2. Donner à l'IA ce profil, un template existant comme modèle (**Templates** → **Exporter…**) et la section 8 de [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+3. Coller le TOML dans **Templates** → **Nouveau** : il est validé en direct et ses tests sont lancés. L'essayer dans le **Bac à sable**, enregistrer, puis relancer **Profil** pour vérifier que les clés visées ne sont plus en clair.
 
 Ensuite, dans **Réglages** : le bastion et les serveurs syslog, à la main ou avec « Importer depuis ma config SSH » (lit `~/.ssh/config`, les alias `*logs` de `~/.zshrc` et les commandes `ssh … syslogserver…` de l'historique du shell).
 
@@ -61,7 +71,7 @@ Au démarrage, l'app lit `latest.json` dans la dernière release GitHub du proje
 | `ui` | Interface Svelte 5 + TypeScript + Tailwind 4. `ui/src/lib/bindings.ts` est généré depuis Rust. |
 | `packaging` | Scripts de build des binaires distribués (macOS, Linux). |
 
-Les templates (`templates/`) et leur corpus de test (`corpus/`) ne sont pas dans le dépôt.
+Le socle générique est dans `crates/core/templates/base/`. Les templates d'équipe (`templates/`) et leur corpus de test (`corpus/`) ne sont pas dans le dépôt.
 
 ## Développer
 
@@ -97,7 +107,7 @@ cargo test -p logano-app export_bindings                                   # ré
 
 ### Templates embarqués ou non
 
-`logano-core` a une fonctionnalité `embedded-templates` (activée par défaut pour ses propres tests et outils) qui embarque à la compilation les `.toml` de `templates/`, s'il existe. L'app (`logano-app`) dépend du moteur **sans** cette fonctionnalité : `cargo tauri dev` et `cargo tauri build` ne contiennent donc aucun template, qu'il y ait un dossier `templates/` ou non.
+Le socle générique `base/…` est toujours embarqué. En plus, `logano-core` a une fonctionnalité `embedded-templates` (activée par défaut pour ses propres tests et outils) qui embarque à la compilation les `.toml` de `templates/`, s'il existe. L'app (`logano-app`) dépend du moteur **sans** cette fonctionnalité : `cargo tauri dev` et `cargo tauri build` ne contiennent donc que le socle générique, qu'il y ait un dossier `templates/` ou non.
 
 ## Construire les binaires
 

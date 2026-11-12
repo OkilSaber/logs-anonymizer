@@ -12,6 +12,19 @@ use std::path::Path;
 /// contient aucun, ils s'importent depuis l'interface.
 const BUILTIN: &[&str] = include!(concat!(env!("OUT_DIR"), "/builtin_templates.rs"));
 
+/// Socle générique, toujours embarqué : il prend tout fichier qui n'a pas de template plus
+/// précis, pour qu'une app sans aucun template importé sache quand même anonymiser ce qui
+/// se reconnaît à sa forme, et profiler des logs.
+const BASE: [&str; 4] = [
+    include_str!("../../templates/base/common.toml"),
+    include_str!("../../templates/base/elixir.toml"),
+    include_str!("../../templates/base/haproxy.toml"),
+    include_str!("../../templates/base/riak-console.toml"),
+];
+
+/// Espace de noms du socle générique. Ses templates passent après tous les autres.
+pub const BASE_NAMESPACE: &str = "base/";
+
 /// Un template dont l'héritage est résolu : règles et filtres portent un id qualifié
 /// `<template d'origine>:<id>`.
 #[derive(Clone, Debug, Default)]
@@ -39,10 +52,11 @@ pub struct Library {
 }
 
 impl Library {
-    /// Bibliothèque contenant les templates embarqués ; vide s'il n'y en a pas.
+    /// Bibliothèque contenant les templates embarqués : le socle générique, toujours, et
+    /// ceux du dossier `templates/` du dépôt quand ils sont compilés avec.
     pub fn builtin() -> Self {
         let mut lib = Library::default();
-        for src in BUILTIN.iter().copied() {
+        for src in BASE.iter().chain(BUILTIN.iter()).copied() {
             let id = lib.add_str(src).expect("les templates fournis sont valides");
             lib.builtin.push(id);
         }

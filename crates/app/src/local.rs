@@ -103,8 +103,10 @@ pub fn add(state: &AppState, a: &LocalAddition) -> AppResult<LocalTemplate> {
         Some(text) => text.clone(),
         None => {
             // Si l'app utilise déjà un template local ailleurs, on ne l'étend pas de lui-même.
-            let base = if a.base_template == template_id { "kbrw/elixir" } else { a.base_template.as_str() };
-            new_file(&state.library.read().expect("verrou bibliothèque"), &template_id, app, base)?
+            let lib = state.library.read().expect("verrou bibliothèque");
+            let fallback = if lib.get("kbrw/elixir").is_some() { "kbrw/elixir" } else { "base/elixir" };
+            let base = if a.base_template == template_id { fallback } else { a.base_template.as_str() };
+            new_file(&lib, &template_id, app, base)?
         }
     };
     let added_id = if a.kind == "allow_value" {
@@ -292,8 +294,8 @@ mod tests {
         let cfg = state.config();
         assert_eq!(pick_template(&lib, &cfg, "demo_services", "haproxy", None).as_deref(), Some("local/demo_services-haproxy"));
         assert_eq!(pick_template(&lib, &cfg, "demo_services", "erlang", None).as_deref(), Some("local/demo_services"));
-        // Rien de local pour le troisième type : le choix habituel s'applique (ici, aucun template).
-        assert_eq!(pick_template(&lib, &cfg, "demo_services", "console", None), None);
+        // Rien de local pour le troisième type : le choix habituel s'applique (ici, le socle générique).
+        assert_eq!(pick_template(&lib, &cfg, "demo_services", "console", None).as_deref(), Some("base/riak-console"));
         assert_eq!(pick_template(&lib, &cfg, "riakn", "console", None).as_deref(), Some("kbrw/riak-console"));
         std::fs::remove_dir_all(&root).ok();
     }
