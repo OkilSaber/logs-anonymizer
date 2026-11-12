@@ -1,13 +1,19 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Logs Anonymizer",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "identifier": "fr.kbrw.logs-anonymizer",
   "build": {
     "frontendDist": "../../ui/dist",
     "devUrl": "http://localhost:1420",
-    "beforeDevCommand": { "script": "npm run dev", "cwd": "../../ui" },
-    "beforeBuildCommand": { "script": "npm run build", "cwd": "../../ui" }
+    "beforeDevCommand": {
+      "script": "npm run dev",
+      "cwd": "../../ui"
+    },
+    "beforeBuildCommand": {
+      "script": "npm run build",
+      "cwd": "../../ui"
+    }
   },
   "app": {
     "windows": [
@@ -28,7 +34,23 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["app"],
-    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"]
+    "targets": [
+      "app"
+    ],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEUyMDlDRUQ0RDhGQUE4REMKUldUY3FQclkxTTRKNHBoTEgzRWhYSU1hUE54NTZyMmRmRnRqdkZmODVtTEVBdzBwM1E1RjJKemQK",
+      "endpoints": [
+        "https://github.com/OkilSaber/logs-anonymizer/releases/latest/download/latest.json"
+      ]
+    }
   }
 }

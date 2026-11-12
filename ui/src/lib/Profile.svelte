@@ -1,6 +1,7 @@
 <script lang="ts">
   import { api, ApiError, type KeyStat, type LocalAddition, type Profile, type ShapeStat } from "./api";
   import { bytes, count, frDay, percent } from "./format";
+  import { profileText } from "./profileText";
 
   let { profile, onback }: { profile: Profile; onback: () => void } = $props();
 
@@ -39,6 +40,19 @@
     }
   }
 
+  // Copie du profil pour une IA : formes masquées, clés et comptes, sans aucune valeur.
+  let copied = $state("");
+  async function copyProfile() {
+    error = "";
+    try {
+      const size = await api.copyProfile(profileText(profile));
+      copied = `${bytes(size)} copiés`;
+      setTimeout(() => (copied = ""), 2600);
+    } catch (e) {
+      error = e instanceof ApiError ? e.message : String(e);
+    }
+  }
+
   const filterShape = (s: ShapeStat) => add(`shape:${s.shape}`, { kind: "filter", description: s.shape.slice(0, 120), pattern: s.pattern, keys: [], strategy: null, label: null });
 
   // Jeton par défaut : le dernier segment de la clé, en majuscules.
@@ -56,6 +70,7 @@
     <span class="text-[12px] text-muted tabular-nums">
       {count(profile.entries)} entrées · {bytes(profile.bytes)} · <span class="text-fg">{percent(profile.filtered_bytes, profile.bytes)} déjà filtrés</span> · reste {bytes(keptBytes)}
     </span>
+    <button class="btn h-7" title="Copie les formes et les clés du profil, sans aucune valeur, avec de quoi les lire : à donner à une IA pour écrire ou améliorer un template" onclick={copyProfile}>{copied || "Copier pour une IA"}</button>
   </div>
 
   <div class="flex items-center gap-2 border-b border-line px-4 py-2">

@@ -1,7 +1,7 @@
 // Backend de démonstration pour l'aperçu de l'interface dans un navigateur.
 // Rien ici n'est utilisé dans l'app : aucune connexion, aucune anonymisation réelle.
 
-import type { Api, Config, FileResult, Profile, RunDone, RunProgress, SandboxResult, Segment } from "./api";
+import type { Api, Config, FileResult, Profile, RunDone, RunProgress, SandboxResult, Segment, UpdateProgress } from "./api";
 import { SANDBOX_SAMPLE } from "./sample";
 
 let config: Config = {
@@ -22,6 +22,8 @@ let config: Config = {
   cache_max_gb: 50,
   mapping_table: true,
   safety_action: "replace",
+  check_updates: true,
+  app_version: "0.1.1",
 };
 
 let added = 0;
@@ -70,6 +72,7 @@ const allowedValues = new Set<string>();
 
 const progressListeners = new Set<(p: RunProgress) => void>();
 const doneListeners = new Set<(d: RunDone) => void>();
+const updateListeners = new Set<(p: UpdateProgress) => void>();
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 function fakeSegments(line: string): { raw: Segment[]; out: Segment[] } {
@@ -357,6 +360,20 @@ export const mockApi: Api = {
   historyClear: async () => {},
   cacheInfo: async () => ({ path: "~/Library/Caches/fr.kbrw.logs-anonymizer/raw", bytes: 412_000_000 }),
   cachePurge: async () => ({ path: "~/Library/Caches/fr.kbrw.logs-anonymizer/raw", bytes: 0 }),
+  copyProfile: async (text) => text.length,
+  // Aperçu : une version plus récente existe toujours, et son installation ne fait qu'avancer une barre.
+  updateCheck: async () => ({ version: "0.2.0", current: "0.1.1", notes: "Bouton « Copier pour une IA » dans le profil.\nMises à jour depuis l'app.", date: "2026-11-20" }),
+  updateInstall: async () => {
+    for (let i = 1; i <= 20; i++) {
+      await new Promise((r) => setTimeout(r, 120));
+      updateListeners.forEach((cb) => cb({ downloaded: i * 650_000, total: 13_000_000 }));
+    }
+    throw new Error("Aperçu sans backend : rien n'est installé.");
+  },
+  onUpdateProgress: async (cb) => {
+    updateListeners.add(cb);
+    return () => updateListeners.delete(cb);
+  },
   onProgress: async (cb) => {
     progressListeners.add(cb);
     return () => progressListeners.delete(cb);

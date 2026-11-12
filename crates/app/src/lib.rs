@@ -10,6 +10,7 @@ mod local;
 mod mapping;
 mod runner;
 mod state;
+mod update;
 
 use config::Dirs;
 use state::AppState;
@@ -50,8 +51,11 @@ fn specta_builder() -> Builder<tauri::Wry> {
             commands::history_clear,
             commands::cache_info,
             commands::cache_purge,
+            commands::copy_profile,
+            commands::update_check,
+            commands::update_install,
         ])
-        .events(collect_events![dto::RunProgress, dto::RunDone])
+        .events(collect_events![dto::RunProgress, dto::RunDone, dto::UpdateProgress])
         // Tailles et compteurs restent très en dessous de 2^53.
         .dangerously_cast_bigints_to_number()
 }
@@ -69,6 +73,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_clipboard_manager::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .invoke_handler(builder.invoke_handler())
         .setup(move |app| {
             builder.mount_events(app);
@@ -81,6 +86,7 @@ pub fn run() {
             };
             let state = AppState::init(dirs).map_err(|e| e.message)?;
             app.manage(state);
+            update::install_at_launch(app.handle());
             Ok(())
         })
         .run(tauri::generate_context!())

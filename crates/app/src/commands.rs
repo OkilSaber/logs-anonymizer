@@ -95,6 +95,8 @@ fn config_to_dto(state: &AppState, cfg: &AppConfig) -> ConfigDto {
         cache_max_gb: (cfg.cache.max_size >> 30) as u32,
         mapping_table: cfg.pseudonyms.mapping_table,
         safety_action: cfg.safety_net.action.clone(),
+        check_updates: cfg.updates.check_on_start,
+        app_version: env!("CARGO_PKG_VERSION").to_string(),
     }
 }
 
@@ -142,6 +144,7 @@ pub fn save_config(state: State<'_, AppState>, config: ConfigDto) -> AppResult<C
     cfg.transfer.parallel_processing = config.parallel_processing.clamp(1, crate::config::MAX_PARALLEL);
     cfg.cache.max_size = (config.cache_max_gb as u64) << 30;
     cfg.pseudonyms.mapping_table = config.mapping_table;
+    cfg.updates.check_on_start = config.check_updates;
     cfg.safety_net.action = if config.safety_action == "report" { "report".into() } else { "replace".into() };
     if state.dirs.output_root(&cfg).starts_with(&state.dirs.raw_cache) {
         return Err(AppError::new("config_invalid", "Le dossier des sorties ne peut pas être dans le cache brut."));
@@ -585,6 +588,34 @@ pub fn copy_output(app: AppHandle, state: State<'_, AppState>, output_id: String
     let text = String::from_utf8_lossy(&std::fs::read(path)?).into_owned();
     app.clipboard().write_text(text).map_err(|e| AppError::new("clipboard", format!("presse-papier indisponible : {e}")))?;
     Ok(size)
+}
+
+/// Copie dans le presse-papier le texte d'un profil, tel que l'interface l'affiche : formes
+/// masquées, noms de clés et comptes. Un profil est calculé sur la sortie anonymisée et ne
+/// contient aucune valeur. Rend le nombre d'octets copiés.
+#[tauri::command]
+#[specta::specta]
+pub fn copy_profile(app: AppHandle, text: String) -> AppResult<u32> {
+    if text.len() as u64 > CLIPBOARD_MAX {
+        return Err(AppError::new("too_large", "Profil trop volumineux pour le presse-papier."));
+    }
+    let size = text.len() as u32;
+    app.clipboard().write_text(text).map_err(|e| AppError::new("clipboard", format!("presse-papier indisponible : {e}")))?;
+    Ok(size)
+}
+
+/// Cherche une version plus récente dans les releases. `None` si l'app est à jour.
+#[tauri::command]
+#[specta::specta]
+pub async fn update_check(app: AppHandle) -> AppResult<Option<UpdateInfo>> {
+    crate::update::check(&app).await
+}
+
+/// Télécharge, vérifie et installe la dernière version, puis relance l'app.
+#[tauri::command]
+#[specta::specta]
+pub async fn update_install(app: AppHandle) -> AppResult<()> {
+    crate::update::install(&app).await
 }
 
 /// Exporte une sortie anonymisée : vers un fichier choisi si elle tient en un fichier, sinon

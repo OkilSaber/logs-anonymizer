@@ -27,6 +27,8 @@ import {
   type SandboxResult_Serialize,
   type TemplateInfo_Serialize,
   type TestOutcomeDto,
+  type UpdateInfo_Serialize,
+  type UpdateProgress_Serialize,
 } from "./bindings";
 import { mockApi } from "./mock";
 
@@ -38,6 +40,8 @@ export type RunDone = RunDone_Serialize;
 export type SandboxResult = SandboxResult_Serialize;
 export type TemplateInfo = TemplateInfo_Serialize;
 export type Import = ImportDto_Serialize;
+export type UpdateInfo = UpdateInfo_Serialize;
+export type UpdateProgress = UpdateProgress_Serialize;
 export type { AppInfoDto, CacheInfo, ImportReport, Deanonymized, DiscoverResult, HistoryEntry, MappingInfo, LocalAddition, TemplateCheck, TemplateSource, LocalTemplate, RunProgress, TestOutcomeDto };
 export type Profile = ProfileDto;
 export type ShapeStat = ProfileDto["shapes"][number];
@@ -97,6 +101,13 @@ export interface Api {
   historyClear(): Promise<void>;
   cacheInfo(): Promise<CacheInfo>;
   cachePurge(): Promise<CacheInfo>;
+  /** Copie le texte d'un profil (formes et clés, aucune valeur). Rend le nombre d'octets copiés. */
+  copyProfile(text: string): Promise<number>;
+  /** Cherche une version plus récente ; `null` si l'app est à jour. */
+  updateCheck(): Promise<UpdateInfo | null>;
+  /** Télécharge, vérifie et installe la dernière version, puis relance l'app. */
+  updateInstall(): Promise<void>;
+  onUpdateProgress(cb: (p: UpdateProgress) => void): Promise<() => void>;
   onProgress(cb: (p: RunProgress) => void): Promise<() => void>;
   onDone(cb: (d: RunDone) => void): Promise<() => void>;
 }
@@ -141,6 +152,12 @@ const tauriApi: Api = {
   },
   cacheInfo: () => unwrap(commands.cacheInfo()),
   cachePurge: () => unwrap(commands.cachePurge()),
+  copyProfile: (t) => unwrap(commands.copyProfile(t)),
+  updateCheck: () => unwrap(commands.updateCheck()),
+  updateInstall: async () => {
+    await unwrap(commands.updateInstall());
+  },
+  onUpdateProgress: (cb) => events.updateProgress.listen((e) => cb(e.payload)),
   onProgress: (cb) => events.runProgress.listen((e) => cb(e.payload)),
   onDone: (cb) => events.runDone.listen((e) => cb(e.payload)),
 };

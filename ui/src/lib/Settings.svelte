@@ -3,6 +3,7 @@
   import { onMount } from "svelte";
   import { api, ApiError, type CacheInfo, type Config } from "./api";
   import { bytes } from "./format";
+  import { checkForUpdate, installUpdate, updater } from "./update.svelte";
 
   let { config, onsaved }: { config: Config; onsaved: (c: Config) => void } = $props();
 
@@ -176,6 +177,24 @@
         <span class="tabular-nums">{cache ? bytes(cache.bytes) : ""}</span>
         <button class="btn" disabled={!cache?.bytes} onclick={purge}>Vider</button>
       </div>
+    </Section>
+    <Section id="updates" title="Mises à jour" summary="version {config.app_version} · {draft.check_updates ? 'vérification au démarrage' : 'pas de vérification automatique'}">
+      <p class="-mt-2 mb-3 text-[12.5px] leading-relaxed text-muted">Au démarrage, l'app demande aux releases GitHub du projet s'il existe une version plus récente. C'est sa seule connexion hors SSH : elle ne transmet aucun identifiant, et une mise à jour n'est installée que si sa signature est celle du projet.</p>
+      <label class="flex items-center gap-2 text-[12.5px]"><input type="checkbox" bind:checked={draft.check_updates} /> Chercher une nouvelle version au démarrage</label>
+      <div class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 whitespace-nowrap">
+        <span class="text-[12.5px]">Version installée : <span class="font-mono">{config.app_version}</span></span>
+        <button class="btn" disabled={updater.checking || updater.installing} onclick={() => checkForUpdate()}>{updater.checking ? "Vérification…" : "Vérifier maintenant"}</button>
+        {#if updater.info}
+          <span class="text-[12.5px] text-fg">Version {updater.info.version} disponible{updater.info.date ? ` (${updater.info.date})` : ""}</span>
+          <button class="btn btn-primary" disabled={updater.installing} onclick={installUpdate}>
+            {updater.installing ? (updater.progress === null ? "Téléchargement…" : `Téléchargement, ${Math.round(updater.progress * 100)} %`) : "Installer et redémarrer"}
+          </button>
+        {:else if updater.checked && !updater.checking}
+          <span class="text-[12.5px] text-ok">L'app est à jour.</span>
+        {/if}
+      </div>
+      {#if updater.info?.notes}<div class="selectable mt-3 rounded-md bg-raised px-3 py-2 text-[12px] leading-relaxed whitespace-pre-line text-muted">{updater.info.notes}</div>{/if}
+      {#if updater.error}<div class="selectable mt-3 rounded-md bg-danger-soft px-3 py-2 text-[12.5px] leading-relaxed text-danger">{updater.error}</div>{/if}
     </Section>
     <div class="h-14"></div>
   </div>

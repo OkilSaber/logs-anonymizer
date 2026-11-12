@@ -87,6 +87,20 @@ pub struct Pseudonyms {
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(default)]
+pub struct Updates {
+    /// Chercher une nouvelle version au démarrage : une requête vers les releases GitHub,
+    /// sans identifiant. Désactivé, l'app n'ouvre aucune connexion hors SSH.
+    pub check_on_start: bool,
+}
+
+impl Default for Updates {
+    fn default() -> Self {
+        Updates { check_on_start: true }
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(default)]
 pub struct SafetyNet {
     /// `replace` ou `report`.
     pub action: String,
@@ -110,6 +124,7 @@ pub struct AppConfig {
     pub output: Output,
     pub safety_net: SafetyNet,
     pub pseudonyms: Pseudonyms,
+    pub updates: Updates,
 }
 
 impl Default for AppConfig {
@@ -124,6 +139,7 @@ impl Default for AppConfig {
             output: Output::default(),
             safety_net: SafetyNet::default(),
             pseudonyms: Pseudonyms::default(),
+            updates: Updates::default(),
         }
     }
 }
@@ -249,5 +265,12 @@ layout = "compact"
         assert_eq!((cfg.transfer.downloads(), cfg.transfer.processing()), (3, 2));
         let wild: AppConfig = toml::from_str("[transfer]\nparallel_downloads = 0\nparallel_processing = 99\n").unwrap();
         assert_eq!((wild.transfer.downloads(), wild.transfer.processing()), (1, 8));
+    }
+    #[test]
+    fn an_older_config_without_updates_checks_at_start() {
+        let cfg: AppConfig = toml::from_str("config_version = 1\n").unwrap();
+        assert!(cfg.updates.check_on_start);
+        let off: AppConfig = toml::from_str("[updates]\ncheck_on_start = false\n").unwrap();
+        assert!(!off.updates.check_on_start);
     }
 }

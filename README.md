@@ -35,12 +35,21 @@ Ensuite, dans **Réglages** : le bastion et les serveurs syslog, à la main ou a
 - **Extraction** : plages de jours, plan avec tailles et estimation disque, téléchargements et anonymisation en parallèle (réglable, 1 à 8 fichiers chacun), progression par fichier, une sortie par jour, statistiques, vue côte à côte, copie par partie, export d'un jour ou de tous les jours d'une application.
 - **Moteur** : formats `elixir_syslog`, `haproxy_syslog` et `lager_syslog` ; extracteurs (métadonnées Plug, cookies, JSON, termes Elixir, requêtes HTTP, HAProxy, clés Riak) ; douze détecteurs (emails, jetons, IP, téléphones, IBAN, cartes, secrets à forte entropie…) ; stratégies (pseudonymiser, masquer, garder, retirer) ; filet de sécurité qui repasse tous les détecteurs sur la sortie.
 - **Templates** : héritage, tests embarqués, filtres de bruit, règles par clé, route, expression régulière ou détecteur ; éditeur avec validation en direct ; import en lot et export.
-- **Profil** : formes d'entrées par poids et inventaire des clés d'un fichier, sans jamais lire une valeur ; un clic ajoute un filtre ou une règle au template local de l'application (`local/<app>`).
+- **Profil** : formes d'entrées par poids et inventaire des clés d'un fichier, sans jamais lire une valeur ; un clic ajoute un filtre ou une règle au template local de l'application (`local/<app>`), et « Copier pour une IA » met le profil dans le presse-papier pour faire écrire un template.
 - **Bac à sable** : coller un extrait, voir ce que le template en fait.
 - **Table de correspondance** chiffrée (clé dans le trousseau du système) et écran « Réponse IA » pour remettre les vraies valeurs dans la réponse.
 - **Historique** des runs, rejouable.
 
-Ce qui reste sur la machine : le mot de passe `sudo` et la phrase de passe de la clé ne sont gardés qu'en mémoire ; l'app n'ouvre aucune connexion autre que SSH.
+Ce qui reste sur la machine : le mot de passe `sudo` et la phrase de passe de la clé ne sont gardés qu'en mémoire. Hors SSH, l'app n'ouvre qu'une connexion : la vérification des mises à jour, décrite ci-dessous, qui se désactive.
+
+## Mises à jour
+
+Au démarrage, l'app lit `latest.json` dans la dernière release GitHub du projet. S'il annonce une version plus récente, la barre latérale propose « Installer et redémarrer » : le paquet est téléchargé, sa signature vérifiée avec la clé publique embarquée dans l'app, puis l'app est remplacée et relancée. Une mise à jour faite ainsi n'a pas besoin du `xattr` de l'installation.
+
+- La requête ne porte aucun identifiant, et rien d'autre n'est envoyé.
+- **Réglages → Mises à jour** : décocher « Chercher une nouvelle version au démarrage » pour que l'app ne contacte plus que les serveurs SSH ; « Vérifier maintenant » reste disponible.
+- `LOGANO_UPDATE_NOW=1` au lancement met l'app à jour sans passer par l'interface.
+- La version 0.1.0 n'a pas ce mécanisme : il faut installer une fois la 0.1.1 ou plus à la main.
 
 ## Organisation du dépôt
 
@@ -107,6 +116,15 @@ packaging/linux/build.sh          # x86_64 ; « arm64 » en argument pour ARM
 ```
 
 Les deux scripts retirent les symboles de debug ; celui de macOS retire aussi les chemins de la machine de build.
+
+### Publier une version
+
+1. Monter la version dans `Cargo.toml`, `crates/app/tauri.conf.json` et `ui/package.json`.
+2. `packaging/macos/build.sh`, puis `packaging/linux/build.sh`.
+3. `packaging/release.sh` rassemble les fichiers dans `dist/release/` et écrit `latest.json`.
+4. `gh release create v<version> dist/release/*`. La release ne doit être ni un brouillon ni une pré-version : l'app lit `releases/latest/download/latest.json`.
+
+Les builds signent les paquets de mise à jour avec la clé privée `~/.tauri/logs-anonymizer.key` (ou `TAURI_SIGNING_PRIVATE_KEY`). Elle n'est pas dans le dépôt. Sa clé publique est dans `crates/app/tauri.conf.json` ; sans la clé privée, on ne peut plus publier de mise à jour que les apps installées acceptent.
 
 ## Pas encore fait
 

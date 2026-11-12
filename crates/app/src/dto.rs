@@ -56,6 +56,11 @@ pub struct ConfigDto {
     /// Garder, chiffrée, la table jeton → valeur réelle de chaque run.
     pub mapping_table: bool,
     pub safety_action: String,
+    /// Chercher une nouvelle version au démarrage.
+    pub check_updates: bool,
+    /// Version de l'app (lecture seule).
+    #[serde(default)]
+    pub app_version: String,
 }
 
 #[derive(Clone, Debug, Serialize, Type)]
@@ -89,6 +94,22 @@ pub struct TemplateSource {
     pub id: String,
     pub toml: String,
     pub builtin: bool,
+}
+
+/// Une version plus récente que celle qui tourne, trouvée dans les releases.
+#[derive(Clone, Debug, Serialize, Type)]
+pub struct UpdateInfo {
+    pub version: String,
+    pub current: String,
+    pub notes: Option<String>,
+    pub date: Option<String>,
+}
+
+/// Avancement du téléchargement d'une mise à jour.
+#[derive(Clone, Debug, Serialize, Type, Event)]
+pub struct UpdateProgress {
+    pub downloaded: u64,
+    pub total: Option<u64>,
 }
 
 /// Un template enregistré par un import en lot.

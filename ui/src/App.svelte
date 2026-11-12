@@ -7,6 +7,7 @@
   import Sandbox from "./lib/Sandbox.svelte";
   import Settings from "./lib/Settings.svelte";
   import Templates from "./lib/Templates.svelte";
+  import { checkForUpdate, installUpdate, updater } from "./lib/update.svelte";
 
   type Tab = "extraction" | "sandbox" | "templates" | "reveal" | "history" | "settings";
   const tabs: { id: Tab; label: string; hint: string }[] = [
@@ -29,6 +30,8 @@
     (async () => {
       try {
         [config, templates] = await Promise.all([api.getConfig(), api.listTemplates()]);
+        // Une seule requête, vers les releases GitHub ; se désactive dans les réglages.
+        if (config.check_updates) checkForUpdate(true);
       } catch (e) {
         fatal = String(e);
       }
@@ -63,6 +66,18 @@
         </button>
       {/each}
     </div>
+    {#if updater.info}
+      <div class="m-2 rounded-md border border-line bg-raised px-2.5 py-2 text-[11.5px] leading-snug">
+        <div class="font-medium text-fg">Version {updater.info.version} disponible</div>
+        {#if updater.installing}
+          <div class="mt-1.5 h-1 overflow-hidden rounded-full bg-bg"><div class="h-full rounded-full bg-accent transition-[width] duration-150" style="width: {Math.round((updater.progress ?? 0) * 100)}%"></div></div>
+          <div class="mt-1 text-muted">{updater.progress === null ? "Téléchargement…" : updater.progress >= 1 ? "Installation, l'app va redémarrer…" : `Téléchargement, ${Math.round(updater.progress * 100)} %`}</div>
+        {:else}
+          <button class="btn btn-primary mt-1.5 h-7 w-full text-[12px]" onclick={installUpdate}>Installer et redémarrer</button>
+        {/if}
+        {#if updater.error}<div class="selectable mt-1.5 text-danger">{updater.error}</div>{/if}
+      </div>
+    {/if}
     {#if !inTauri}
       <div class="m-2 rounded-md bg-warn-soft px-2.5 py-2 text-[11px] leading-snug text-warn">Aperçu sans backend : données de démonstration.</div>
     {/if}

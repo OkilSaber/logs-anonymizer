@@ -95,12 +95,23 @@ export const commands = {
 	cacheInfo: () => typedError<CacheInfo, AppError_Serialize>(__TAURI_INVOKE("cache_info")),
 	/**  Vide le cache brut. Refusé pendant un run. */
 	cachePurge: () => typedError<CacheInfo, AppError_Serialize>(__TAURI_INVOKE("cache_purge")),
+	/**
+	 *  Copie dans le presse-papier le texte d'un profil, tel que l'interface l'affiche : formes
+	 *  masquées, noms de clés et comptes. Un profil est calculé sur la sortie anonymisée et ne
+	 *  contient aucune valeur. Rend le nombre d'octets copiés.
+	 */
+	copyProfile: (text: string) => typedError<number, AppError_Serialize>(__TAURI_INVOKE("copy_profile", { text })),
+	/**  Cherche une version plus récente dans les releases. `None` si l'app est à jour. */
+	updateCheck: () => typedError<UpdateInfo_Serialize | null, AppError_Serialize>(__TAURI_INVOKE("update_check")),
+	/**  Télécharge, vérifie et installe la dernière version, puis relance l'app. */
+	updateInstall: () => typedError<null, AppError_Serialize>(__TAURI_INVOKE("update_install")),
 };
 
 /** Events */
 export const events = {
 	runDone: makeEvent<RunDone_Serialize, RunDone_Deserialize>("run-done"),
 	runProgress: makeEvent<RunProgress, RunProgress>("run-progress"),
+	updateProgress: makeEvent<UpdateProgress_Serialize, UpdateProgress_Deserialize>("update-progress"),
 };
 
 /* Types */
@@ -182,6 +193,10 @@ export type ConfigDto_Deserialize = {
 	/**  Garder, chiffrée, la table jeton → valeur réelle de chaque run. */
 	mapping_table: boolean,
 	safety_action: string,
+	/**  Chercher une nouvelle version au démarrage. */
+	check_updates: boolean,
+	/**  Version de l'app (lecture seule). */
+	app_version?: string,
 };
 
 export type ConfigDto_Serialize = {
@@ -205,6 +220,10 @@ export type ConfigDto_Serialize = {
 	/**  Garder, chiffrée, la table jeton → valeur réelle de chaque run. */
 	mapping_table: boolean,
 	safety_action: string,
+	/**  Chercher une nouvelle version au démarrage. */
+	check_updates: boolean,
+	/**  Version de l'app (lecture seule). */
+	app_version: string,
 };
 
 export type Counter = {
@@ -775,6 +794,40 @@ export type TestOutcomeDto = {
 	passed: boolean,
 	failures: string[],
 	output: string,
+};
+
+/**  Une version plus récente que celle qui tourne, trouvée dans les releases. */
+export type UpdateInfo = UpdateInfo_Serialize | UpdateInfo_Deserialize;
+
+/**  Une version plus récente que celle qui tourne, trouvée dans les releases. */
+export type UpdateInfo_Deserialize = {
+	version: string,
+	current: string,
+	notes?: string | null,
+	date?: string | null,
+};
+
+/**  Une version plus récente que celle qui tourne, trouvée dans les releases. */
+export type UpdateInfo_Serialize = {
+	version: string,
+	current: string,
+	notes: string | null,
+	date: string | null,
+};
+
+/**  Avancement du téléchargement d'une mise à jour. */
+export type UpdateProgress = UpdateProgress_Serialize | UpdateProgress_Deserialize;
+
+/**  Avancement du téléchargement d'une mise à jour. */
+export type UpdateProgress_Deserialize = {
+	downloaded: number,
+	total?: number | null,
+};
+
+/**  Avancement du téléchargement d'une mise à jour. */
+export type UpdateProgress_Serialize = {
+	downloaded: number,
+	total: number | null,
 };
 
 export type ValueShape = {
