@@ -13,7 +13,7 @@ Les binaires sont dans les [releases](../../releases).
 | Système | Fichier | Remarques |
 |---|---|---|
 | macOS 11+ (Apple Silicon et Intel) | `Logs.Anonymizer_<version>_universal.dmg` | L'app n'est pas signée : après l'avoir glissée dans Applications, lancer une fois `xattr -cr "/Applications/Logs Anonymizer.app"`, sinon macOS la dit « endommagée ». |
-| Ubuntu 22.04+ (x86_64) | `Logs.Anonymizer_<version>_amd64.AppImage` | `chmod +x` puis lancer. Demande `libfuse2` (`sudo apt install libfuse2`), ou lancer avec `--appimage-extract-and-run`. La table de correspondance utilise le trousseau du bureau (GNOME Keyring, KWallet). |
+| Ubuntu 22.04+ (x86_64) | `Logs.Anonymizer_<version>_amd64.AppImage` | `chmod +x` puis lancer. Si elle ne se lance pas : `sudo apt install libfuse2`, ou ajouter l'option `--appimage-extract-and-run`. La table de correspondance utilise le trousseau du bureau (GNOME Keyring, KWallet). |
 
 ## Premier lancement : importer les templates
 
