@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 5b09cbc91714fada96ec4b4a6b550255784c755d2a852ea89a6a3f15d0a59de2 # shrinks to entries = [("etam-gateway01.etam-sb.kbrw.fr  10:00:00.000 [info]  POST /login?user=aaa&password=&!!a$$0A$&x next\netam-gateway01.etam-sb.kbrw.fr  State: %{sftp: [host: \"51.0.0.1\", password: \"&!!a$$0A$&\"], first_name_query_field: \"Aaaaaa\"}\n", ["&!!a$$0A$&", "51.0.0.1", "Aaaaaa"])]

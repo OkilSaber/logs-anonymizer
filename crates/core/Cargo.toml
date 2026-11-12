@@ -1,0 +1,34 @@
+[package]
+name = "logano-core"
+description = "Moteur d'anonymisation de logs : formats, extracteurs, détecteurs, règles, templates."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[features]
+default = ["embedded-templates"]
+# Embarque les templates du dossier `templates/` du dépôt, s'il existe. L'app se compile
+# sans : ses binaires ne contiennent aucun template.
+embedded-templates = []
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+toml.workspace = true
+thiserror.workspace = true
+regex = "1"
+memchr = "2"
+aho-corasick = "1"
+rayon = "1"
+crossbeam-channel = "0.5"
+flate2 = { version = "1", default-features = false, features = ["zlib-ng"] }
+hmac = "0.12"
+sha2 = "0.10"
+base64 = "0.22"
+semver = "1"
+dashmap = "6"
+unicode-normalization = "0.1"
+
+[dev-dependencies]
+proptest = "1"

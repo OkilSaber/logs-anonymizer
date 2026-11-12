@@ -1,0 +1,34 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Logs Anonymizer",
+  "version": "0.1.0",
+  "identifier": "fr.kbrw.logs-anonymizer",
+  "build": {
+    "frontendDist": "../../ui/dist",
+    "devUrl": "http://localhost:1420",
+    "beforeDevCommand": { "script": "npm run dev", "cwd": "../../ui" },
+    "beforeBuildCommand": { "script": "npm run build", "cwd": "../../ui" }
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Logs Anonymizer",
+        "width": 1360,
+        "height": 880,
+        "minWidth": 1000,
+        "minHeight": 640,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src ipc: http://ipc.localhost"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["app"],
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"]
+  }
+}

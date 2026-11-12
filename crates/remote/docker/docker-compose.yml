@@ -1,0 +1,38 @@
+# Deux conteneurs sshd pour les tests d'intégration « docker-tests » :
+#
+#   bastion : sshd + nc, publié sur 127.0.0.1:2222 (utilisateur `jump`)
+#   target  : sshd, joignable uniquement depuis le bastion sous le nom
+#             syslogserver01.priv.testadm-sb.kbrw.test ; arborescence
+#             /srv/syslog/2026/11/09/APPS/{app}/{cluster}/ en -rw-r----- syslog:logreader-tenant ;
+#             utilisateur `logs` (sudo sans mot de passe) et `logspw`
+#             (sudo avec le mot de passe `logano-sudo-pw`)
+#
+# Utilisation, depuis crates/remote :
+#
+#   ./docker/gen-keys.sh
+#   docker compose -f docker/docker-compose.yml up -d --build
+#   cargo test -p logano-remote --features docker-tests --test docker_ssh
+#   docker compose -f docker/docker-compose.yml down
+#
+# Le port publié se change avec LOGANO_DOCKER_BASTION_PORT (lu aussi par le test).
+services:
+  bastion:
+    build: ./bastion
+    ports:
+      - "127.0.0.1:${LOGANO_DOCKER_BASTION_PORT:-2222}:22"
+    volumes:
+      - ./keys:/keys:ro
+    networks:
+      - logano
+
+  target:
+    build: ./syslog
+    volumes:
+      - ./keys:/keys:ro
+    networks:
+      logano:
+        aliases:
+          - syslogserver01.priv.testadm-sb.kbrw.test
+
+networks:
+  logano: {}

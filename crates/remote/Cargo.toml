@@ -1,0 +1,26 @@
+[package]
+name = "logano-remote"
+description = "Accès distant : SSH via bastion, sudo chmod, découverte, transfert, cache brut."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[features]
+# Tests d'intégration contre les conteneurs de `docker/` (à lancer à la main).
+docker-tests = []
+
+[dependencies]
+russh = "0.65"
+tokio = { workspace = true }
+tokio-util = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+chrono = { workspace = true }
+secrecy = "0.10"
+
+[dev-dependencies]
+tempfile = "3"
+flate2 = "1"
+toml = { workspace = true }

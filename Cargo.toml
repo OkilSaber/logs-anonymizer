@@ -1,0 +1,36 @@
+[workspace]
+resolver = "2"
+members = ["crates/core", "crates/remote", "crates/app"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "UNLICENSED"
+publish = false
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "1"
+thiserror = "2"
+chrono = { version = "0.4", default-features = false, features = ["std", "clock", "serde"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "fs", "io-util", "time", "process", "net"] }
+tokio-util = "0.7"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 4
+debug = 1
+
+[profile.dev.package."*"]
+opt-level = 2
+
+# Le moteur et le transfert sont optimisés même en développement : `cargo tauri dev`
+# traite alors les logs à la vitesse d'un build release (un facteur 10 sur le moteur).
+# Seule la crate de l'app reste non optimisée, pour recompiler vite.
+[profile.dev.package.logano-core]
+opt-level = 3
+
+[profile.dev.package.logano-remote]
+opt-level = 3

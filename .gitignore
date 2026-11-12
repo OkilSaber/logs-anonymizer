@@ -1,0 +1,18 @@
+/target
+node_modules
+dist
+.DS_Store
+*.part
+/ui/.svelte-kit
+/crates/app/gen
+
+# Hors du dépôt : les templates et leur corpus de test se partagent à part (archive .zip
+# importée depuis l'app), et la configuration reste sur chaque poste.
+/templates
+/corpus
+/.claude
+/PROMPT.md
+
+# Hors sujet : ne font pas partie de l'app.
+/assets
+/video

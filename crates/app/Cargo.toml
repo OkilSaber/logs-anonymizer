@@ -1,0 +1,52 @@
+[package]
+name = "logano-app"
+description = "Logs Anonymizer : application desktop (Tauri 2)."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lib]
+name = "logano_app"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+logano-core = { path = "../core", default-features = false }
+logano-remote = { path = "../remote" }
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-clipboard-manager = "2"
+tauri-specta = { version = "=2.0.0-rc.26", features = ["derive", "typescript"] }
+specta = { version = "=2.0.0-rc.26", features = ["derive"] }
+specta-typescript = "0.0.13"
+serde.workspace = true
+serde_json.workspace = true
+toml.workspace = true
+thiserror.workspace = true
+chrono.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+futures-util = "0.3"
+rand = "0.9"
+fs4 = "1"
+chacha20poly1305 = "0.10"
+base64 = "0.22"
+toml_edit = "0.25"
+zip = { version = "2", default-features = false, features = ["deflate"] }
+
+# Trousseau du système : celui de macOS, ou le Secret Service (GNOME Keyring, KWallet) sous Linux.
+[target.'cfg(target_os = "macos")'.dependencies]
+keyring = { version = "3", features = ["apple-native"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+keyring = { version = "3", features = ["sync-secret-service", "crypto-rust"] }
+
+[target.'cfg(not(any(target_os = "macos", target_os = "linux")))'.dependencies]
+keyring = { version = "3" }
+
+# Les tests de l'app s'appuient sur les templates du dépôt, quand ils sont là.
+[dev-dependencies]
+logano-core = { path = "../core", features = ["embedded-templates"] }
