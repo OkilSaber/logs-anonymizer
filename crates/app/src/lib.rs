@@ -76,7 +76,8 @@ pub fn run() {
             let dirs = Dirs {
                 data: path.app_data_dir()?,
                 raw_cache: path.app_cache_dir()?.join("raw"),
-                default_output: path.document_dir()?.join("LogsAnonymizer"),
+                // Sous Linux, « Documents » n'est connu que si xdg-user-dirs l'a déclaré.
+                default_output: path.document_dir().or_else(|_| path.home_dir().map(|home| home.join("Documents")))?.join("LogsAnonymizer"),
             };
             let state = AppState::init(dirs).map_err(|e| e.message)?;
             app.manage(state);
