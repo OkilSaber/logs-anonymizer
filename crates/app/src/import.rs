@@ -348,6 +348,32 @@ strategy = "keep"
         std::fs::remove_dir_all(&root).ok();
     }
 
+    /// Les templates du dépôt, quand ils sont là, doivent survivre à leur propre partage :
+    /// zippés tels quels puis importés dans une app vide, tous entrent et tous compilent.
+    #[cfg(logano_templates)]
+    #[test]
+    fn the_repository_templates_import_from_a_zip_into_an_empty_app() {
+        let (state, root) = state("depot");
+        let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../templates");
+        let mut files = Vec::new();
+        collect_dir(&dir, &mut files).unwrap();
+        assert!(files.len() >= 4);
+        let archive = root.join("templates.zip");
+        let owned: Vec<(String, String)> = files.into_iter().map(|s| (format!("templates/{}", s.label), s.text.unwrap())).collect();
+        zip_of(&archive, &owned.iter().map(|(n, t)| (n.as_str(), t.as_str())).collect::<Vec<_>>());
+
+        let report = import(&state, collect(&[archive]).unwrap()).unwrap();
+        assert!(report.rejected.is_empty(), "{:?}", report.rejected);
+        assert_eq!(report.imported.len(), owned.len());
+        // Rechargée depuis le seul dossier de l'utilisateur, la bibliothèque compile tout.
+        let mut lib = logano_core::Library::default();
+        assert!(lib.load_dir(&state.dirs.user_templates()).is_empty());
+        for t in &report.imported {
+            assert!(lib.compile(&t.id).is_ok(), "{}", t.id);
+        }
+        std::fs::remove_dir_all(&root).ok();
+    }
+
     #[test]
     fn an_identifier_cannot_point_outside_the_templates_folder() {
         let (state, root) = state("chemin");
