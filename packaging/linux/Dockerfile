@@ -3,7 +3,7 @@
 FROM ubuntu:22.04
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      build-essential curl wget file ca-certificates pkg-config git xz-utils \
+      build-essential cmake curl wget file ca-certificates pkg-config git xz-utils \
       libssl-dev libwebkit2gtk-4.1-dev libxdo-dev libayatana-appindicator3-dev librsvg2-dev libdbus-1-dev xdg-utils \
     && rm -rf /var/lib/apt/lists/*
 # Node 22 (binaire officiel) et Rust stable.
